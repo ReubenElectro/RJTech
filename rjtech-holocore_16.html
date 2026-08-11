@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RJTech — HOLOCORE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --bg: #030810;
+    --panel: #06121c;
+    --line: #0e4a5c;
+    --line-soft: #0a3444;
+    --cyan: #4be8e0;
+    --cyan-bright: #b9fff8;
+    --cyan-dim: #1f7f82;
+    --amber: #ffb454;
+    --red: #ff5c5c;
+    --text: #cdf7f2;
+    --text-dim: #6fa8a4;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background: radial-gradient(ellipse at 50% 30%, #061622 0%, #030810 60%, #020509 100%);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  .grid-overlay{
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .scanline{
+    position: fixed; inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(75,232,224,0.03) 50%, transparent 100%);
+    background-size: 100% 6px;
+    pointer-events: none;
+    z-index: 1;
+    animation: scan-move 8s linear infinite;
+  }
+  @keyframes scan-move{ from{background-position: 0 0;} to{background-position: 0 400px;} }
+
+  .app{
+    position: relative;
+    z-index: 2;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+
+  header{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+
+  .brand{
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: var(--cyan-bright);
+    text-shadow: 0 0 18px rgba(75,232,224,0.5);
+  }
+  .brand span{ color: var(--cyan-dim); font-weight: 500; font-size: 13px; letter-spacing: 5px; display:block; margin-top: 2px;}
+
+  .statusline{
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+  .statusline .dot{
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background: var(--cyan); margin-right: 6px;
+    box-shadow: 0 0 8px var(--cyan);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .core-wrap{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: 380px;
+    margin-bottom: 8px;
+    perspective: 900px;
+  }
+
+  #coreCanvas{
+    position: absolute;
+    transition: transform 0.15s ease-out;
+    animation: materialize 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes materialize{
+    0%{ opacity: 0; transform: scale(0.3) rotate(-25deg); filter: brightness(3); }
+    55%{ opacity: 1; transform: scale(1.08) rotate(4deg); filter: brightness(1.6); }
+    80%{ transform: scale(0.98) rotate(-1deg); filter: brightness(1); }
+    100%{ opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+  }
+
+  .core-label{
+    position: absolute;
+    text-align: center;
+    pointer-events: none;
+    animation: materialize 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: 0.15s;
+  }
+  .core-label .rj{ font-family:'Orbitron'; font-size:12px; letter-spacing:8px; color:var(--cyan-dim); }
+  .core-label .tech{ font-family:'Orbitron'; font-weight:900; font-size:34px; letter-spacing:3px; color:var(--cyan-bright); text-shadow: 0 0 8px rgba(75,232,224,0.9), 0 0 24px rgba(75,232,224,0.4); margin-top: 4px; animation: flicker 6s ease-in-out infinite;}
+  @keyframes flicker{ 0%,94%,100%{opacity:1;} 95%{opacity:0.7;} 96%{opacity:1;} 97%{opacity:0.75;} 98%{opacity:1;} }
+  .core-label .state{ font-size: 10px; letter-spacing: 3px; color: var(--text-dim); margin-top: 10px; min-height: 14px; }
+
+  .activate-btn{
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(75,232,224,0.06);
+    border: 1px solid var(--line);
+    color: var(--cyan);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 9px 22px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .activate-btn:hover{ background: rgba(75,232,224,0.14); border-color: var(--cyan); box-shadow: 0 0 16px rgba(75,232,224,0.25); }
+  .activate-btn:active{ transform: translateX(-50%) scale(0.97); }
+  .activate-btn.listening{ color: var(--amber); border-color: var(--amber); background: rgba(255,180,84,0.08); }
+
+  .panels{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 40px 0 24px;
+  }
+  @media (max-width: 640px){ .panels{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: rgba(6,18,28,0.6);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .panel::before{
+    content: '';
+    position: absolute; top:0; left:0;
+    width: 16px; height: 16px;
+    border-top: 1px solid var(--cyan);
+    border-left: 1px solid var(--cyan);
+  }
+  .panel::after{
+    content: '';
+    position: absolute; bottom:0; right:0;
+    width: 16px; height: 16px;
+    border-bottom: 1px solid var(--cyan);
+    border-right: 1px solid var(--cyan);
+  }
+  .panel-label{ font-size: 10px; letter-spacing: 3px; color: var(--cyan-dim); margin-bottom: 6px; }
+  .panel-value{ font-family:'Orbitron'; font-size: 17px; color: var(--text); letter-spacing: 1px; }
+  .panel-sub{ font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  .console{
+    background: rgba(4,12,18,0.75);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    height: 380px;
+  }
+  .console-head{
+    display:flex; justify-content: space-between; align-items:center;
+    padding: 10px 16px; border-bottom: 1px solid var(--line-soft);
+    font-size: 10px; letter-spacing: 3px; color: var(--cyan-dim);
+  }
+  .console-log{
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .console-log::-webkit-scrollbar{ width: 6px; }
+  .console-log::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 3px; }
+
+  .msg{ font-size: 13px; line-height: 1.6; max-width: 88%; }
+  .msg.user{ align-self: flex-end; text-align: right; color: var(--text); }
+  .msg.user .who{ color: var(--amber); }
+  .msg.ai{ align-self: flex-start; color: var(--cyan-bright); }
+  .msg .who{ font-size: 10px; letter-spacing: 2px; color: var(--cyan-dim); display:block; margin-bottom: 3px; }
+
+  .console-input{
+    display: flex;
+    border-top: 1px solid var(--line-soft);
+  }
+  .console-input input{
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 14px 16px;
+  }
+  .console-input input::placeholder{ color: var(--text-dim); }
+  .console-input button{
+    background: none;
+    border: none;
+    border-left: 1px solid var(--line-soft);
+    color: var(--cyan);
+    padding: 0 20px;
+    cursor: pointer;
+    font-family: 'Orbitron';
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+  .console-input button:hover{ background: rgba(75,232,224,0.08); }
+
+  footer{
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-top: 30px;
+  }
+
+  #hudSvg a{ cursor: pointer; }
+  #hudSvg a:hover text{ fill: #eafcff; }
+  #hudSvg a:hover line{ stroke: #4be8e0; }
+</style>
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+<div class="scanline"></div>
+
+<div class="app">
+
+  <header>
+    <div class="brand">RJTECH<span>HOLOCORE INTERFACE</span></div>
+    <div class="statusline">
+      <div><span class="dot"></span>SYSTEM ONLINE</div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="tabbar" style="display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:24px; flex-wrap:wrap;">
+    <button class="tabbtn active" data-tab="holocore" style="background:none; border:none; border-bottom:2px solid var(--cyan); color:var(--cyan-bright); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">HOLOCORE</button>
+    <button class="tabbtn" data-tab="sterling" style="background:none; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">STERLING</button>
+    <button class="tabbtn" data-tab="scanner" style="background:none; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">SCANNER</button>
+    <button class="tabbtn" data-tab="systems" style="background:none; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">SYSTEMS</button>
+    <button class="tabbtn" data-tab="enviro" style="background:none; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">ENVIRO</button>
+    <button class="tabbtn" data-tab="nanoswarm" style="background:none; border:none; border-bottom:2px solid transparent; color:var(--text-dim); font-family:'Orbitron'; font-size:11px; letter-spacing:2px; padding:10px 20px; cursor:pointer;">NANOSWARM</button>
+  </div>
+
+  <div id="tab-holocore">
+  <div class="core-wrap">
+    <svg id="coreCanvas" width="380" height="380" viewBox="0 0 380 380">
+      <defs>
+        <filter id="holoGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="holoGlowSoft" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="6" result="blur2"/>
+          <feMerge>
+            <feMergeNode in="blur2"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- outer faint bloom ring -->
+      <circle cx="190" cy="190" r="172" fill="none" stroke="#4be8e0" stroke-width="2" opacity="0.12" filter="url(#holoGlowSoft)"/>
+
+      <!-- nano tick ring: fine radial ticks like a precision instrument -->
+      <g id="tickRing" style="transform-origin:190px 190px;">
+        <g id="ticks"></g>
+      </g>
+
+      <g id="ringOuter" style="transform-origin:190px 190px;" filter="url(#holoGlow)">
+        <circle cx="190" cy="190" r="150" fill="none" stroke="#0e4a5c" stroke-width="0.75" stroke-dasharray="2 8" opacity="0.6"/>
+        <circle cx="190" cy="190" r="150" fill="none" stroke="#4be8e0" stroke-width="1.5" stroke-dasharray="26 400"/>
+        <circle cx="190" cy="190" r="150" fill="none" stroke="#4be8e0" stroke-width="1.5" stroke-dasharray="12 200" stroke-dashoffset="220" opacity="0.7"/>
+      </g>
+      <g id="ringMid" style="transform-origin:190px 190px;" filter="url(#holoGlow)">
+        <circle cx="190" cy="190" r="118" fill="none" stroke="#1f7f82" stroke-width="0.5" opacity="0.5"/>
+        <circle cx="190" cy="190" r="118" fill="none" stroke="#b9fff8" stroke-width="1.4" stroke-dasharray="40 340"/>
+        <circle id="midDot" cx="72" cy="190" r="3" fill="#b9fff8"/>
+        <circle cx="72" cy="190" r="6" fill="none" stroke="#b9fff8" stroke-width="0.5" opacity="0.6"/>
+      </g>
+      <g id="ringInner" style="transform-origin:190px 190px;">
+        <circle cx="190" cy="190" r="86" fill="none" stroke="#0e4a5c" stroke-width="0.5" stroke-dasharray="1 5"/>
+        <polygon points="190,120 249,155 249,225 190,260 131,225 131,155" fill="none" stroke="#4be8e0" stroke-width="0.5" opacity="0.5"/>
+      </g>
+
+      <!-- hex core lattice -->
+      <g filter="url(#holoGlow)">
+        <polygon points="190,146 227,168 227,212 190,234 153,212 153,168" fill="none" stroke="#eafcff" stroke-width="1"/>
+        <polygon points="190,146 227,168 227,212 190,234 153,212 153,168" fill="#4be8e0" opacity="0.06"/>
+        <line x1="153" y1="168" x2="227" y2="212" stroke="#0e4a5c" stroke-width="0.5"/>
+        <line x1="153" y1="212" x2="227" y2="168" stroke="#0e4a5c" stroke-width="0.5"/>
+        <line x1="190" y1="146" x2="190" y2="234" stroke="#0e4a5c" stroke-width="0.5"/>
+      </g>
+
+      <circle cx="190" cy="190" r="86" fill="none" stroke="#0e4a5c" stroke-width="0.5"/>
+      <line id="sweep" x1="190" y1="30" x2="190" y2="350" stroke="#4be8e0" stroke-width="1" opacity="0.3" style="transform-origin:190px 190px;"/>
+
+      <!-- orbiting nano particles -->
+      <g id="particles"></g>
+    </svg>
+
+    <div class="core-label">
+      <div class="rj">RJ</div>
+      <div class="tech">HOLOCORE</div>
+      <div class="state" id="coreState">standing by</div>
+    </div>
+
+    <button class="activate-btn" id="activateBtn">ACTIVATE</button>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-label">CORE STATUS</div>
+      <div class="panel-value" id="pStatus">STABLE</div>
+      <div class="panel-sub">All systems nominal</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">LOCAL TIME</div>
+      <div class="panel-value" id="pTime">--:--:--</div>
+      <div class="panel-sub" id="pDate">-- -- --</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">SESSION</div>
+      <div class="panel-value" id="pSession">0 QUERIES</div>
+      <div class="panel-sub">Live console below</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">OPERATOR</div>
+      <div class="panel-value">REUBEN</div>
+      <div class="panel-sub">RJTech · authenticated</div>
+    </div>
+  </div>
+
+  <div id="hudOverlay" style="display:none; background:rgba(4,12,18,0.75); border:1px solid var(--line); border-radius:3px; padding:20px; margin-bottom:24px; position:relative;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <span style="font-size:10px; letter-spacing:3px; color:var(--cyan-dim);">RJTECH TACTICAL HUD</span>
+      <button id="closeHudBtn" style="background:none; border:1px solid var(--line); color:var(--cyan); font-family:'Space Mono'; font-size:10px; letter-spacing:2px; padding:5px 12px; cursor:pointer; border-radius:2px;">CLOSE</button>
+    </div>
+    <svg width="100%" height="380" viewBox="0 0 640 380" id="hudSvg">
+      <defs>
+        <filter id="hudGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2.5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <g opacity="0.15" stroke="#0e4a5c" stroke-width="0.5">
+        <line x1="0" y1="95" x2="640" y2="95"/>
+        <line x1="0" y1="190" x2="640" y2="190"/>
+        <line x1="0" y1="285" x2="640" y2="285"/>
+        <line x1="160" y1="0" x2="160" y2="380"/>
+        <line x1="320" y1="0" x2="320" y2="380"/>
+        <line x1="480" y1="0" x2="480" y2="380"/>
+      </g>
+
+      <line x1="20" y1="20" x2="60" y2="20" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="20" y1="20" x2="20" y2="60" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="620" y1="20" x2="580" y2="20" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="620" y1="20" x2="620" y2="60" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="20" y1="360" x2="60" y2="360" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="20" y1="360" x2="20" y2="320" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="620" y1="360" x2="580" y2="360" stroke="#4be8e0" stroke-width="1"/>
+      <line x1="620" y1="360" x2="620" y2="320" stroke="#4be8e0" stroke-width="1"/>
+
+      <g id="hudCore" style="transform-origin:320px 190px;">
+        <circle cx="320" cy="190" r="88" fill="none" stroke="#0e4a5c" stroke-width="0.5" stroke-dasharray="2 7" opacity="0.6"/>
+      </g>
+      <g id="hudRingOuter" style="transform-origin:320px 190px;" filter="url(#hudGlow)">
+        <circle cx="320" cy="190" r="76" fill="none" stroke="#4be8e0" stroke-width="1.4" stroke-dasharray="18 220"/>
+        <circle cx="320" cy="190" r="76" fill="none" stroke="#0e4a5c" stroke-width="0.5" stroke-dasharray="2 6" opacity="0.5"/>
+      </g>
+      <g id="hudRingMid" style="transform-origin:320px 190px;" filter="url(#hudGlow)">
+        <circle cx="320" cy="190" r="58" fill="none" stroke="#b9fff8" stroke-width="1.2" stroke-dasharray="26 180"/>
+        <circle cx="320" cy="190" r="58" fill="none" stroke="#1f7f82" stroke-width="0.5" opacity="0.5"/>
+      </g>
+      <polygon points="320,158 348,174 348,206 320,222 292,206 292,174" fill="#4be8e0" opacity="0.08"/>
+      <polygon points="320,158 348,174 348,206 320,222 292,206 292,174" fill="none" stroke="#eafcff" stroke-width="1" filter="url(#hudGlow)"/>
+
+      <text x="320" y="185" text-anchor="middle" font-family="'Orbitron', sans-serif" font-size="9" letter-spacing="4" fill="#5eead4">RJTECH</text>
+      <text x="320" y="200" text-anchor="middle" font-family="'Orbitron', sans-serif" font-size="12" font-weight="700" letter-spacing="2" fill="#eafcff">HUD ONLINE</text>
+
+      <g font-family="'Space Mono', monospace" font-size="10" letter-spacing="1">
+        <a href="https://github.com/Electroreuben" target="_blank" rel="noopener">
+          <line x1="376" y1="160" x2="440" y2="60" stroke="#0e4a5c" stroke-width="0.5"/>
+          <text x="444" y="56" fill="#5eead4">GITHUB — ALL REPOS</text>
+          <text x="444" y="70" fill="#4be8e0" text-decoration="underline">github.com/Electroreuben</text>
+        </a>
+
+        <a href="https://github.com/Electroreuben/sterling" target="_blank" rel="noopener">
+          <line x1="376" y1="220" x2="470" y2="130" stroke="#0e4a5c" stroke-width="0.5"/>
+          <text x="474" y="126" fill="#5eead4">STERLING REPO</text>
+          <text x="474" y="140" fill="#4be8e0" text-decoration="underline">github.com/.../sterling</text>
+        </a>
+
+        <a href="https://console.firebase.google.com/project/chasetown-saints/overview" target="_blank" rel="noopener">
+          <line x1="264" y1="160" x2="150" y2="160" stroke="#0e4a5c" stroke-width="0.5"/>
+          <text x="40" y="156" fill="#5eead4">FIREBASE CONSOLE</text>
+          <text x="40" y="170" fill="#4be8e0" text-decoration="underline">chasetown-saints</text>
+        </a>
+
+        <a href="https://github.com/Electroreuben/RJoperator" target="_blank" rel="noopener">
+          <line x1="264" y1="220" x2="160" y2="290" stroke="#0e4a5c" stroke-width="0.5"/>
+          <text x="40" y="286" fill="#5eead4">RJHQ REPO</text>
+          <text x="40" y="300" fill="#4be8e0" text-decoration="underline">github.com/.../RJoperator</text>
+        </a>
+      </g>
+
+      <text x="20" y="376" font-family="'Space Mono', monospace" font-size="9" letter-spacing="2" fill="#1f7f82">RJTECH-HUD-01 · LIVE FEED</text>
+      <text x="500" y="376" font-family="'Space Mono', monospace" font-size="9" letter-spacing="2" fill="#1f7f82" id="hudClock">--:--:--</text>
+    </svg>
+  </div>
+
+  <div class="console">
+    <div class="console-head">
+      <span>HOLOCORE CONSOLE</span>
+      <span id="consoleStatus">READY</span>
+    </div>
+    <div id="keyBar" style="display:flex; gap:0; border-bottom:1px solid var(--line-soft);">
+      <input type="password" id="apiKeyInput" placeholder="Paste free Gemini API key (aistudio.google.com)" style="flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:'Space Mono',monospace; font-size:12px; padding:10px 16px;" />
+      <button id="saveKeyBtn" style="background:none; border:none; color:var(--cyan); padding:0 18px; cursor:pointer; font-family:'Orbitron'; font-size:10px; letter-spacing:2px;">SAVE</button>
+    </div>
+    <div class="console-log" id="log">
+      <div class="msg ai"><span class="who">HOLOCORE</span>Interface live. Paste a free Gemini API key above, then hit ACTIVATE once — the mic stays live until you press it again. Say "open HUD" for the tactical overlay.</div>
+    </div>
+    <div class="console-input">
+      <input type="text" id="queryInput" placeholder="Type a command or question..." />
+      <button id="sendBtn">SEND</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="tab-sterling" style="display:none;">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 50px 20px 30px; perspective:900px;">
+      <svg id="sterlingOrb" width="320" height="320" viewBox="0 0 320 320" style="cursor:pointer; animation: materialize 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; transition: transform 0.15s ease-out;">
+        <defs>
+          <filter id="orbGlowSoft" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="10" result="b"/>
+            <feMerge><feMergeNode in="b"/></feMerge>
+          </filter>
+          <filter id="orbGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="4" result="b2"/>
+            <feMerge><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <radialGradient id="orbFill" cx="45%" cy="40%" r="60%">
+            <stop offset="0%" stop-color="#eafcff"/>
+            <stop offset="45%" stop-color="#4be8e0"/>
+            <stop offset="100%" stop-color="#083344"/>
+          </radialGradient>
+        </defs>
+
+        <circle id="orbBloom" cx="160" cy="160" r="120" fill="#4be8e0" opacity="0.10" filter="url(#orbGlowSoft)"/>
+
+        <g id="orbRingOuter" style="transform-origin:160px 160px;" filter="url(#orbGlow)">
+          <circle cx="160" cy="160" r="118" fill="none" stroke="#0e4a5c" stroke-width="0.5" stroke-dasharray="2 8" opacity="0.6"/>
+          <circle cx="160" cy="160" r="118" fill="none" stroke="#4be8e0" stroke-width="1.4" stroke-dasharray="20 300"/>
+        </g>
+        <g id="orbRingMid" style="transform-origin:160px 160px;" filter="url(#orbGlow)">
+          <circle cx="160" cy="160" r="98" fill="none" stroke="#b9fff8" stroke-width="1" stroke-dasharray="30 240" opacity="0.7"/>
+        </g>
+
+        <circle id="orbCore" cx="160" cy="160" r="66" fill="url(#orbFill)" filter="url(#orbGlow)"/>
+        <circle cx="160" cy="160" r="66" fill="none" stroke="#eafcff" stroke-width="1" opacity="0.5"/>
+      </svg>
+
+      <div style="font-family:'Orbitron'; font-size:12px; letter-spacing:6px; color:var(--cyan-dim); margin-top:22px;">RJTECH</div>
+      <div style="font-family:'Orbitron'; font-weight:900; font-size:26px; letter-spacing:3px; color:var(--cyan-bright); text-shadow: 0 0 8px rgba(75,232,224,0.7); margin-top:2px;">STERLING</div>
+      <div id="sterlingStateLabel" style="font-size:11px; letter-spacing:3px; color:var(--text-dim); margin-top:14px; min-height:16px;">tap the orb to speak</div>
+
+      <button id="wakeWordToggle" style="margin-top:18px; background:none; border:1px solid var(--line); color:var(--text-dim); font-family:'Space Mono'; font-size:11px; letter-spacing:2px; padding:9px 20px; border-radius:2px; cursor:pointer;">WAKE WORD: OFF</button>
+      <p style="font-size:10px; color:var(--text-dim); margin-top:10px; max-width:340px; text-align:center; line-height:1.6;">
+        When on, Sterling listens passively for "Hey Sterling" — mic stays active in the background the whole time this tab is open.
+      </p>
+    </div>
+  </div>
+
+  <div id="tab-scanner" style="display:none;">
+    <div style="position:relative; background:#000; border-radius:3px; overflow:hidden; min-height:360px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line);">
+      <video id="scannerVideo" autoplay playsinline style="width:100%; max-height:420px; object-fit:cover; display:none;"></video>
+      <div id="scannerPlaceholder" style="text-align:center; padding:60px 20px;">
+        <div style="font-family:'Orbitron'; font-size:12px; letter-spacing:4px; color:var(--cyan-dim); margin-bottom:14px;">OPTICAL SCANNER</div>
+        <button id="scannerStartBtn" style="background:rgba(75,232,224,0.06); border:1px solid var(--line); color:var(--cyan); font-family:'Space Mono'; font-size:12px; letter-spacing:2px; padding:12px 28px; border-radius:2px; cursor:pointer;">ACTIVATE CAMERA</button>
+      </div>
+      <svg id="scannerOverlay" width="100%" height="100%" viewBox="0 0 640 420" style="position:absolute; inset:0; pointer-events:none; display:none;">
+        <g opacity="0.2" stroke="#4be8e0" stroke-width="0.5">
+          <line x1="0" y1="105" x2="640" y2="105"/><line x1="0" y1="210" x2="640" y2="210"/><line x1="0" y1="315" x2="640" y2="315"/>
+          <line x1="160" y1="0" x2="160" y2="420"/><line x1="320" y1="0" x2="320" y2="420"/><line x1="480" y1="0" x2="480" y2="420"/>
+        </g>
+        <line x1="20" y1="20" x2="60" y2="20" stroke="#4be8e0" stroke-width="1.5"/><line x1="20" y1="20" x2="20" y2="60" stroke="#4be8e0" stroke-width="1.5"/>
+        <line x1="620" y1="20" x2="580" y2="20" stroke="#4be8e0" stroke-width="1.5"/><line x1="620" y1="20" x2="620" y2="60" stroke="#4be8e0" stroke-width="1.5"/>
+        <line x1="20" y1="400" x2="60" y2="400" stroke="#4be8e0" stroke-width="1.5"/><line x1="20" y1="400" x2="20" y2="360" stroke="#4be8e0" stroke-width="1.5"/>
+        <line x1="620" y1="400" x2="580" y2="400" stroke="#4be8e0" stroke-width="1.5"/><line x1="620" y1="400" x2="620" y2="360" stroke="#4be8e0" stroke-width="1.5"/>
+        <line id="scanSweep" x1="0" y1="0" x2="640" y2="0" stroke="#4be8e0" stroke-width="1.5" opacity="0.6"/>
+        <text x="20" y="415" font-family="'Space Mono'" font-size="10" letter-spacing="2" fill="#5eead4">RJTECH-SCAN-01 · LIVE FEED</text>
+        <text x="500" y="415" font-family="'Space Mono'" font-size="10" letter-spacing="2" fill="#5eead4" id="scannerClock">--:--:--</text>
+      </svg>
+    </div>
+    <p style="text-align:center; font-size:11px; color:var(--text-dim); margin-top:14px; max-width:480px; margin-left:auto; margin-right:auto; line-height:1.6;">
+      This is a real live camera feed with a holographic overlay — the grid and scan line are genuine, but there's no actual object recognition running underneath. It looks like it's analysing; it isn't yet.
+    </p>
+  </div>
+
+  <div id="tab-systems" style="display:none;">
+    <div style="max-width:480px; margin:0 auto; padding:20px 0;">
+      <div style="font-family:'Orbitron'; font-size:12px; letter-spacing:4px; color:var(--cyan-dim); text-align:center; margin-bottom:28px;">HOLOCORE SYSTEMS CONTROL</div>
+
+      <div style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; letter-spacing:2px; color:var(--text-dim); margin-bottom:8px;">
+          <span>RING ROTATION SPEED</span><span id="speedVal">1.0x</span>
+        </div>
+        <input type="range" id="speedSlider" min="0" max="3" step="0.1" value="1" style="width:100%;" />
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; font-size:11px; letter-spacing:2px; color:var(--text-dim); margin-bottom:8px;">
+          <span>HOLOGRAM GLOW INTENSITY</span><span id="glowVal">100%</span>
+        </div>
+        <input type="range" id="glowSlider" min="0" max="200" step="5" value="100" style="width:100%;" />
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px; letter-spacing:2px; color:var(--text-dim); margin-bottom:10px;">CORE COLOUR MODE</div>
+        <div style="display:flex; gap:10px;">
+          <button class="colorModeBtn" data-color="cyan" style="flex:1; background:rgba(75,232,224,0.1); border:1px solid #4be8e0; color:#4be8e0; font-family:'Space Mono'; font-size:11px; padding:10px; border-radius:2px; cursor:pointer;">CYAN</button>
+          <button class="colorModeBtn" data-color="amber" style="flex:1; background:none; border:1px solid var(--line); color:var(--amber); font-family:'Space Mono'; font-size:11px; padding:10px; border-radius:2px; cursor:pointer;">AMBER</button>
+          <button class="colorModeBtn" data-color="red" style="flex:1; background:none; border:1px solid var(--line); color:var(--red); font-family:'Space Mono'; font-size:11px; padding:10px; border-radius:2px; cursor:pointer;">RED ALERT</button>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:11px; color:var(--text-dim); margin-top:26px; line-height:1.6;">
+        These controls change the HOLOCORE tab's visuals live — flip back over and see it move at the new speed and colour.
+      </p>
+    </div>
+  </div>
+
+  <div id="tab-enviro" style="display:none;">
+    <div style="max-width:480px; margin:0 auto; text-align:center; padding:30px 0;">
+      <div style="font-family:'Orbitron'; font-size:12px; letter-spacing:4px; color:var(--cyan-dim); margin-bottom:10px;">ENVIRONMENTAL SCAN — LICHFIELD, UK</div>
+      <div id="enviroTemp" style="font-family:'Orbitron'; font-weight:900; font-size:56px; letter-spacing:2px; color:var(--cyan-bright); text-shadow: 0 0 12px rgba(75,232,224,0.6);">--°</div>
+      <div id="enviroCondition" style="font-size:13px; color:var(--text); letter-spacing:2px; margin-bottom:24px;">SCANNING...</div>
+      <div class="panels" style="margin-top:0;">
+        <div class="panel"><div class="panel-label">WIND SPEED</div><div class="panel-value" id="enviroWind">--</div></div>
+        <div class="panel"><div class="panel-label">TODAY'S HIGH</div><div class="panel-value" id="enviroHigh">--</div></div>
+        <div class="panel"><div class="panel-label">TODAY'S LOW</div><div class="panel-value" id="enviroLow">--</div></div>
+        <div class="panel"><div class="panel-label">RAIN CHANCE</div><div class="panel-value" id="enviroRain">--</div></div>
+      </div>
+      <button id="enviroRefreshBtn" style="margin-top:20px; background:rgba(75,232,224,0.06); border:1px solid var(--line); color:var(--cyan); font-family:'Space Mono'; font-size:11px; letter-spacing:2px; padding:10px 24px; border-radius:2px; cursor:pointer;">RESCAN</button>
+      <p style="font-size:10px; color:var(--text-dim); margin-top:16px; letter-spacing:1px;">Live data — Open-Meteo, free, no key required</p>
+    </div>
+  </div>
+
+  <div id="tab-nanoswarm" style="display:none;">
+    <div style="max-width:480px; margin:0 auto; text-align:center;">
+      <div style="font-family:'Orbitron'; font-size:12px; letter-spacing:4px; color:var(--cyan-dim); margin-bottom:14px;">NANOBOT SWARM — RESPONSIVE FIELD</div>
+    </div>
+    <div style="position:relative; background:#000; border:1px solid var(--line); border-radius:3px; overflow:hidden;">
+      <canvas id="swarmCanvas" style="display:block; width:100%; height:340px;"></canvas>
+    </div>
+    <div style="text-align:center; margin-top:16px;">
+      <button id="swarmScatterBtn" style="background:rgba(75,232,224,0.06); border:1px solid var(--line); color:var(--cyan); font-family:'Space Mono'; font-size:11px; letter-spacing:2px; padding:10px 24px; border-radius:2px; cursor:pointer;">SCATTER</button>
+      <p style="font-size:11px; color:var(--text-dim); margin-top:14px; line-height:1.6;">Move your cursor over the field — the swarm follows and reforms around it, live.</p>
+    </div>
+  </div>
+
+  <footer>RJTECH SYSTEMS — HOLOCORE v0.1 PROTOTYPE</footer>
+
+</div>
+
+<script>
+  // clock
+  function tick(){
+    const now = new Date();
+    const t = now.toLocaleTimeString('en-GB');
+    document.getElementById('clock').textContent = t;
+    document.getElementById('pTime').textContent = t;
+    document.getElementById('pDate').textContent = now.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short' });
+  }
+  tick(); setInterval(tick, 1000);
+
+  // build nano tick ring — 72 fine radial ticks around the core
+  const ticksGroup = document.getElementById('ticks');
+  for(let i = 0; i < 72; i++){
+    const angle = (i / 72) * 360;
+    const rad = angle * Math.PI / 180;
+    const isMajor = i % 6 === 0;
+    const rOuter = 172;
+    const rInner = isMajor ? 163 : 167;
+    const x1 = 190 + rOuter * Math.cos(rad);
+    const y1 = 190 + rOuter * Math.sin(rad);
+    const x2 = 190 + rInner * Math.cos(rad);
+    const y2 = 190 + rInner * Math.sin(rad);
+    const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    tick.setAttribute('x1', x1.toFixed(1)); tick.setAttribute('y1', y1.toFixed(1));
+    tick.setAttribute('x2', x2.toFixed(1)); tick.setAttribute('y2', y2.toFixed(1));
+    tick.setAttribute('stroke', isMajor ? '#4be8e0' : '#0e4a5c');
+    tick.setAttribute('stroke-width', isMajor ? '1' : '0.5');
+    tick.setAttribute('opacity', isMajor ? '0.7' : '0.35');
+    ticksGroup.appendChild(tick);
+  }
+
+  // build orbiting nano particles
+  const particlesGroup = document.getElementById('particles');
+  const particleDefs = [
+    { r: 172, speed: 0.10, size: 1.6, start: 40 },
+    { r: 172, speed: 0.10, size: 1.6, start: 160 },
+    { r: 172, speed: 0.10, size: 1.6, start: 280 },
+    { r: 134, speed: -0.14, size: 2, start: 90 },
+    { r: 134, speed: -0.14, size: 2, start: 270 },
+    { r: 100, speed: 0.20, size: 1.4, start: 10 },
+    { r: 100, speed: 0.20, size: 1.4, start: 130 },
+    { r: 100, speed: 0.20, size: 1.4, start: 250 }
+  ];
+  const particleEls = particleDefs.map(p => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('r', p.size);
+    c.setAttribute('fill', '#b9fff8');
+    c.setAttribute('opacity', '0.85');
+    particlesGroup.appendChild(c);
+    return { el: c, angle: p.start, ...p };
+  });
+
+  // ring rotation via JS (avoids CSS animation restart issues, keeps it smooth)
+  let ringSpeedMultiplier = 1;
+  let a1=0,a2=360,a3=0, a4=0, sweepA=0;
+  function animateRings(){
+    a1 = (a1 + 0.06 * ringSpeedMultiplier) % 360;
+    a2 = (a2 - 0.09 * ringSpeedMultiplier + 360) % 360;
+    a3 = (a3 + 0.15 * ringSpeedMultiplier) % 360;
+    a4 = (a4 - 0.03 * ringSpeedMultiplier + 360) % 360;
+    sweepA = (sweepA + 0.5 * ringSpeedMultiplier) % 360;
+    document.getElementById('ringOuter').setAttribute('transform', `rotate(${a1} 190 190)`);
+    document.getElementById('ringMid').setAttribute('transform', `rotate(${a2} 190 190)`);
+    document.getElementById('ringInner').setAttribute('transform', `rotate(${a3} 190 190)`);
+    document.getElementById('tickRing').setAttribute('transform', `rotate(${a4} 190 190)`);
+    document.getElementById('sweep').setAttribute('transform', `rotate(${sweepA} 190 190)`);
+
+    particleEls.forEach(p => {
+      p.angle = (p.angle + p.speed) % 360;
+      const rad = p.angle * Math.PI / 180;
+      p.el.setAttribute('cx', (190 + p.r * Math.cos(rad)).toFixed(1));
+      p.el.setAttribute('cy', (190 + p.r * Math.sin(rad)).toFixed(1));
+    });
+
+    requestAnimationFrame(animateRings);
+  }
+  animateRings();
+
+  // 3D parallax — the hologram tilts toward the cursor like it's floating in space
+  const coreWrap = document.querySelector('.core-wrap');
+  const coreCanvas = document.getElementById('coreCanvas');
+  coreWrap.addEventListener('mousemove', (e) => {
+    const rect = coreWrap.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    coreCanvas.style.transform = `rotateY(${px * 18}deg) rotateX(${-py * 18}deg)`;
+  });
+  coreWrap.addEventListener('mouseleave', () => {
+    coreCanvas.style.transform = 'rotateY(0deg) rotateX(0deg)';
+  });
+
+  // console logic
+  const log = document.getElementById('log');
+  const input = document.getElementById('queryInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const consoleStatus = document.getElementById('consoleStatus');
+  const coreState = document.getElementById('coreState');
+  const pSession = document.getElementById('pSession');
+  const pStatus = document.getElementById('pStatus');
+  let queryCount = 0;
+  let history = [];
+
+  // API key: stored locally in this browser only, never sent anywhere but Google's API
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const saveKeyBtn = document.getElementById('saveKeyBtn');
+  const keyBar = document.getElementById('keyBar');
+  let apiKey = localStorage.getItem('holocore_gemini_key') || '';
+  if(apiKey){ apiKeyInput.value = apiKey; keyBar.style.opacity = '0.5'; }
+
+  saveKeyBtn.addEventListener('click', () => {
+    apiKey = apiKeyInput.value.trim();
+    localStorage.setItem('holocore_gemini_key', apiKey);
+    addMsg('HOLOCORE', apiKey ? 'Key saved locally. Core is live.' : 'Key cleared.', 'ai');
+    keyBar.style.opacity = apiKey ? '0.5' : '1';
+  });
+
+  function addMsg(who, text, cls){
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.innerHTML = `<span class="who">${who}</span>${text}`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function callGemini(systemText, historyArr){
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemText }] },
+        contents: historyArr
+      })
+    });
+    const data = await response.json();
+    if(data.candidates && data.candidates[0] && data.candidates[0].content){
+      return data.candidates[0].content.parts.map(p => p.text).join('\n');
+    } else if(data.error){
+      return 'API error: ' + data.error.message;
+    }
+    return 'No response received.';
+  }
+
+  async function sendQuery(){
+    const text = input.value.trim();
+    if(!text) return;
+
+    const lower = text.toLowerCase();
+    if(lower.includes('open hud') || lower.includes('open the hud')){
+      input.value = '';
+      addMsg('OPERATOR', text, 'user');
+      openHud();
+      addMsg('HOLOCORE', 'HUD online. Your repos and Firebase console are live and clickable.', 'ai');
+      if(voiceMode){ speak('HUD online.'); voiceMode = false; }
+      return;
+    }
+    if(lower.includes('close hud')){
+      input.value = '';
+      addMsg('OPERATOR', text, 'user');
+      closeHud();
+      addMsg('HOLOCORE', 'HUD closed.', 'ai');
+      if(voiceMode){ speak('HUD closed.'); voiceMode = false; }
+      return;
+    }
+
+    if(!apiKey){
+      addMsg('OPERATOR', text, 'user');
+      addMsg('HOLOCORE', 'No API key on file. Paste a free key from aistudio.google.com above and hit SAVE — takes about 30 seconds, no card required.', 'ai');
+      input.value = '';
+      return;
+    }
+
+    input.value = '';
+    addMsg('OPERATOR', text, 'user');
+    history.push({ role: 'user', parts: [{ text }] });
+    queryCount++;
+    pSession.textContent = queryCount + ' QUERIES';
+    consoleStatus.textContent = 'PROCESSING';
+    coreState.textContent = 'processing query';
+    pStatus.textContent = 'ACTIVE';
+
+    try{
+      const reply = await callGemini(
+        "You are HOLOCORE, a sharp, concise AI interface built by RJTech. Speak like a capable Jarvis-style assistant: brief, direct, a little dry, no fluff, no excessive enthusiasm. Never use emoji. Reply in plain, normal spoken sentences only — no markdown, no asterisks, no bullet points, no hashtags, no special symbols or formatting of any kind, just plain conversational language as if speaking out loud.",
+        history
+      );
+      addMsg('HOLOCORE', stripSymbols(reply), 'ai');
+      if(voiceMode){ speak(reply); voiceMode = false; }
+      history.push({ role: 'model', parts: [{ text: reply }] });
+    }catch(err){
+      addMsg('HOLOCORE', 'Connection error — could not reach core systems.', 'ai');
+    }finally{
+      consoleStatus.textContent = 'READY';
+      coreState.textContent = 'standing by';
+      pStatus.textContent = 'STABLE';
+    }
+  }
+
+  sendBtn.addEventListener('click', sendQuery);
+  input.addEventListener('keydown', e => { if(e.key === 'Enter') sendQuery(); });
+
+  // Tab switching (generalized across any number of tabs)
+  const tabButtons = document.querySelectorAll('.tabbtn');
+  const tabPanels = {
+    holocore: document.getElementById('tab-holocore'),
+    sterling: document.getElementById('tab-sterling'),
+    scanner: document.getElementById('tab-scanner'),
+    systems: document.getElementById('tab-systems'),
+    enviro: document.getElementById('tab-enviro'),
+    nanoswarm: document.getElementById('tab-nanoswarm')
+  };
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabButtons.forEach(b => {
+        b.classList.remove('active');
+        b.style.color = 'var(--text-dim)';
+        b.style.borderBottomColor = 'transparent';
+      });
+      btn.classList.add('active');
+      btn.style.color = 'var(--cyan-bright)';
+      btn.style.borderBottomColor = 'var(--cyan)';
+      const tab = btn.dataset.tab;
+      Object.keys(tabPanels).forEach(key => {
+        if(tabPanels[key]) tabPanels[key].style.display = key === tab ? 'block' : 'none';
+      });
+      if(tab === 'nanoswarm'){
+        // canvas was hidden (display:none) until now, so its size was 0 — fix it up on open
+        requestAnimationFrame(() => { resizeSwarm(); if(swarmParticles.length === 0) initSwarm(); });
+      }
+    });
+  });
+
+  // SCANNER tab — real camera feed, holographic overlay
+  const scannerStartBtn = document.getElementById('scannerStartBtn');
+  const scannerVideo = document.getElementById('scannerVideo');
+  const scannerPlaceholder = document.getElementById('scannerPlaceholder');
+  const scannerOverlay = document.getElementById('scannerOverlay');
+  let scanSweepY = 0;
+
+  scannerStartBtn.addEventListener('click', async () => {
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      scannerVideo.srcObject = stream;
+      scannerVideo.style.display = 'block';
+      scannerPlaceholder.style.display = 'none';
+      scannerOverlay.style.display = 'block';
+    }catch(e){
+      scannerPlaceholder.innerHTML = '<div style="font-size:12px; color:var(--text-dim); letter-spacing:1px;">Camera access denied or unavailable.</div>';
+    }
+  });
+
+  function animateScanner(){
+    scanSweepY = (scanSweepY + 2) % 420;
+    const sweep = document.getElementById('scanSweep');
+    if(sweep && scannerOverlay.style.display === 'block'){
+      sweep.setAttribute('y1', scanSweepY); sweep.setAttribute('y2', scanSweepY);
+    }
+    const sc = document.getElementById('scannerClock');
+    if(sc) sc.textContent = new Date().toLocaleTimeString('en-GB');
+    requestAnimationFrame(animateScanner);
+  }
+  animateScanner();
+
+  // SYSTEMS tab — real controls over HOLOCORE visuals
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  const glowSlider = document.getElementById('glowSlider');
+  const glowVal = document.getElementById('glowVal');
+  speedSlider.addEventListener('input', () => {
+    ringSpeedMultiplier = parseFloat(speedSlider.value);
+    speedVal.textContent = ringSpeedMultiplier.toFixed(1) + 'x';
+  });
+  glowSlider.addEventListener('input', () => {
+    const pct = parseInt(glowSlider.value);
+    glowVal.textContent = pct + '%';
+    document.querySelectorAll('#coreCanvas feGaussianBlur, #sterlingOrb feGaussianBlur').forEach(f => {
+      f.setAttribute('stdDeviation', (3.2 * (pct/100)).toFixed(1));
+    });
+  });
+
+  document.querySelectorAll('.colorModeBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.colorModeBtn').forEach(b => {
+        b.style.background = 'none';
+        b.style.border = '1px solid var(--line)';
+      });
+      const mode = btn.dataset.color;
+      const colorMap = { cyan: '#4be8e0', amber: '#ffb454', red: '#ff5c5c' };
+      const c = colorMap[mode];
+      btn.style.background = `${c}1a`;
+      btn.style.border = `1px solid ${c}`;
+      document.querySelectorAll('.brand').forEach(el => el.style.color = c);
+      document.getElementById('coreState') && (document.getElementById('coreState').style.color = c);
+      document.querySelectorAll('#coreCanvas [stroke="#4be8e0"], #coreCanvas [fill="#4be8e0"]').forEach(el => {
+        if(el.getAttribute('stroke') === '#4be8e0') el.setAttribute('stroke', c);
+        if(el.getAttribute('fill') === '#4be8e0') el.setAttribute('fill', c);
+      });
+    });
+  });
+
+  // ENVIRO tab — real live weather via Open-Meteo (free, no key)
+  const enviroTemp = document.getElementById('enviroTemp');
+  const enviroCondition = document.getElementById('enviroCondition');
+  const enviroWind = document.getElementById('enviroWind');
+  const enviroHigh = document.getElementById('enviroHigh');
+  const enviroLow = document.getElementById('enviroLow');
+  const enviroRain = document.getElementById('enviroRain');
+  const enviroRefreshBtn = document.getElementById('enviroRefreshBtn');
+
+  const weatherCodes = {
+    0:'CLEAR SKY', 1:'MOSTLY CLEAR', 2:'PARTLY CLOUDY', 3:'OVERCAST',
+    45:'FOG', 48:'FOG', 51:'LIGHT DRIZZLE', 53:'DRIZZLE', 55:'HEAVY DRIZZLE',
+    61:'LIGHT RAIN', 63:'RAIN', 65:'HEAVY RAIN', 71:'LIGHT SNOW', 73:'SNOW', 75:'HEAVY SNOW',
+    80:'RAIN SHOWERS', 81:'RAIN SHOWERS', 82:'VIOLENT SHOWERS', 95:'THUNDERSTORM'
+  };
+
+  async function fetchEnviro(){
+    enviroCondition.textContent = 'SCANNING...';
+    try{
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=52.6825&longitude=-1.8262&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FLondon';
+      const res = await fetch(url);
+      const data = await res.json();
+      const cw = data.current_weather;
+      enviroTemp.textContent = Math.round(cw.temperature) + '°C';
+      enviroCondition.textContent = weatherCodes[cw.weathercode] || 'READING UNCLEAR';
+      enviroWind.textContent = Math.round(cw.windspeed) + ' km/h';
+      if(data.daily){
+        enviroHigh.textContent = Math.round(data.daily.temperature_2m_max[0]) + '°C';
+        enviroLow.textContent = Math.round(data.daily.temperature_2m_min[0]) + '°C';
+        enviroRain.textContent = data.daily.precipitation_probability_max[0] + '%';
+      }
+    }catch(e){
+      enviroCondition.textContent = 'SCAN FAILED — CHECK CONNECTION';
+    }
+  }
+  enviroRefreshBtn.addEventListener('click', fetchEnviro);
+  fetchEnviro();
+
+  // NANOSWARM tab — real interactive particle field
+  const swarmCanvas = document.getElementById('swarmCanvas');
+  const swarmCtx = swarmCanvas.getContext('2d');
+  const swarmScatterBtn = document.getElementById('swarmScatterBtn');
+  let swarmParticles = [];
+  let swarmMouse = { x: -9999, y: -9999, active: false };
+  let swarmW = 0, swarmH = 0;
+
+  function resizeSwarm(){
+    const rect = swarmCanvas.getBoundingClientRect();
+    swarmW = rect.width; swarmH = rect.height;
+    swarmCanvas.width = swarmW * devicePixelRatio;
+    swarmCanvas.height = swarmH * devicePixelRatio;
+    swarmCtx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  window.addEventListener('resize', resizeSwarm);
+
+  function initSwarm(){
+    resizeSwarm();
+    swarmParticles = [];
+    for(let i = 0; i < 130; i++){
+      swarmParticles.push({
+        x: Math.random() * swarmW, y: Math.random() * swarmH,
+        vx: (Math.random()-0.5) * 0.4, vy: (Math.random()-0.5) * 0.4,
+        r: 1 + Math.random() * 1.6
+      });
+    }
+  }
+
+  swarmCanvas.addEventListener('mousemove', (e) => {
+    const rect = swarmCanvas.getBoundingClientRect();
+    swarmMouse.x = e.clientX - rect.left;
+    swarmMouse.y = e.clientY - rect.top;
+    swarmMouse.active = true;
+  });
+  swarmCanvas.addEventListener('mouseleave', () => { swarmMouse.active = false; });
+  swarmScatterBtn.addEventListener('click', () => {
+    swarmParticles.forEach(p => {
+      const angle = Math.random() * Math.PI * 2;
+      p.vx += Math.cos(angle) * 4;
+      p.vy += Math.sin(angle) * 4;
+    });
+  });
+
+  function animateSwarm(){
+    if(swarmW && swarmH){
+      swarmCtx.clearRect(0, 0, swarmW, swarmH);
+
+      swarmParticles.forEach(p => {
+        if(swarmMouse.active){
+          const dx = swarmMouse.x - p.x, dy = swarmMouse.y - p.y;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          if(dist < 130){
+            p.vx += (dx/dist) * 0.04;
+            p.vy += (dy/dist) * 0.04;
+          }
+        }
+        p.vx *= 0.96; p.vy *= 0.96;
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < 0 || p.x > swarmW) p.vx *= -1;
+        if(p.y < 0 || p.y > swarmH) p.vy *= -1;
+        p.x = Math.max(0, Math.min(swarmW, p.x));
+        p.y = Math.max(0, Math.min(swarmH, p.y));
+      });
+
+      swarmCtx.strokeStyle = 'rgba(75,232,224,0.12)';
+      swarmCtx.lineWidth = 0.5;
+      for(let i = 0; i < swarmParticles.length; i++){
+        for(let j = i+1; j < swarmParticles.length; j++){
+          const a = swarmParticles[i], b = swarmParticles[j];
+          const d = Math.hypot(a.x-b.x, a.y-b.y);
+          if(d < 42){
+            swarmCtx.beginPath();
+            swarmCtx.moveTo(a.x, a.y); swarmCtx.lineTo(b.x, b.y);
+            swarmCtx.stroke();
+          }
+        }
+      }
+
+      swarmCtx.fillStyle = '#4be8e0';
+      swarmParticles.forEach(p => {
+        swarmCtx.beginPath();
+        swarmCtx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        swarmCtx.fill();
+      });
+    }
+    requestAnimationFrame(animateSwarm);
+  }
+  initSwarm();
+  animateSwarm();
+  // safety net: if the tab was never opened yet, canvas had 0 size at init — recheck shortly after load
+  setTimeout(() => { if(swarmW === 0) { resizeSwarm(); initSwarm(); } }, 500);
+
+  // ring rotation for Sterling orb
+  let sa1=0, sa2=360, sPulse=0;
+  let sterlingVoiceLevel = 0; // 0-1, driven by real mic amplitude when wake word is on
+  function animateSterling(){
+    sa1 = (sa1 + 0.05) % 360;
+    sa2 = (sa2 - 0.08 + 360) % 360;
+    sPulse += 0.02;
+    const so = document.getElementById('orbRingOuter');
+    const sm = document.getElementById('orbRingMid');
+    const core = document.getElementById('orbCore');
+    const bloom = document.getElementById('orbBloom');
+    if(so) so.setAttribute('transform', `rotate(${sa1} 160 160)`);
+    if(sm) sm.setAttribute('transform', `rotate(${sa2} 160 160)`);
+    if(core){
+      const voiceBoost = sterlingVoiceLevel * 0.35;
+      const scale = sterlingSpeaking ? 1 + Math.sin(sPulse*6)*0.05 : 1 + Math.sin(sPulse)*0.02 + voiceBoost;
+      core.setAttribute('r', (66 * scale).toFixed(1));
+    }
+    if(bloom){
+      const boost = sterlingListening ? 0.18 + sterlingVoiceLevel*0.3 : (sterlingSpeaking ? 0.30 : 0.10);
+      bloom.setAttribute('opacity', (boost + Math.sin(sPulse*2)*0.03).toFixed(2));
+    }
+    requestAnimationFrame(animateSterling);
+  }
+  animateSterling();
+
+  // Sterling — voice only, no chat log
+  const sterlingOrb = document.getElementById('sterlingOrb');
+  const sterlingStateLabel = document.getElementById('sterlingStateLabel');
+  let sterlingHistory = [];
+  let sterlingListening = false;
+  let sterlingSpeaking = false;
+  let sterlingRecognition = null;
+
+  async function sendSterlingQuery(spokenText){
+    if(!spokenText) return;
+
+    if(!apiKey){
+      sterlingStateLabel.textContent = 'no API key — set one in HOLOCORE tab';
+      speak('I have no API key on file, sir. Pop over to the HOLOCORE tab and save your free Gemini key.', sterlingRecognition, () => sterlingListening);
+      return;
+    }
+
+    sterlingHistory.push({ role: 'user', parts: [{ text: spokenText }] });
+    sterlingStateLabel.textContent = 'thinking...';
+
+    try{
+      const reply = await callGemini(
+        "You are Sterling, a posh, old-English butler-style AI assistant built by RJTech. Speak with warmth, dry wit, and impeccable manners. Address the user respectfully as 'sir' or 'Reuben' occasionally, not every line. Stay concise and useful underneath the charm — this is decorum, not padding. Never use emoji. Reply in plain, normal spoken sentences only — no markdown, no asterisks, no bullet points, no hashtags, no special symbols or formatting of any kind, since this is spoken aloud, not written.",
+        sterlingHistory
+      );
+      sterlingHistory.push({ role: 'model', parts: [{ text: reply }] });
+      sterlingSpeaking = true;
+      sterlingStateLabel.textContent = 'speaking...';
+      const clean = stripSymbols(reply);
+      if('speechSynthesis' in window){
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(clean);
+        utter.voice = pickVoice();
+        utter.rate = 1.02;
+        utter.pitch = 0.85;
+        if(sterlingListening && sterlingRecognition){ try{ sterlingRecognition.stop(); }catch(e){} }
+        if(wakeWordOn && wakeRecognition){ try{ wakeRecognition.stop(); }catch(e){} }
+        utter.onend = () => {
+          sterlingSpeaking = false;
+          sterlingStateLabel.textContent = sterlingListening ? 'listening...' : (wakeWordOn ? 'listening for "Hey Sterling"' : 'tap the orb to speak');
+          if(sterlingListening && sterlingRecognition){ try{ sterlingRecognition.start(); }catch(e){} }
+          if(wakeWordOn && wakeRecognition){ try{ wakeRecognition.start(); }catch(e){} }
+        };
+        window.speechSynthesis.speak(utter);
+      } else {
+        sterlingSpeaking = false;
+      }
+    }catch(err){
+      sterlingStateLabel.textContent = 'connection error';
+      sterlingSpeaking = false;
+    }
+  }
+
+  if(SpeechRec){
+    sterlingRecognition = new SpeechRec();
+    sterlingRecognition.lang = 'en-GB';
+    sterlingRecognition.continuous = true;
+    sterlingRecognition.interimResults = false;
+
+    sterlingRecognition.onresult = (event) => {
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(event.results[i].isFinal){
+          const transcript = event.results[i][0].transcript.trim();
+          if(transcript) sendSterlingQuery(transcript);
+        }
+      }
+    };
+    sterlingRecognition.onerror = (e) => {
+      if(e.error === 'no-speech' || e.error === 'aborted') return;
+      sterlingStateLabel.textContent = 'mic error — check permissions';
+      setSterlingListening(false);
+    };
+    sterlingRecognition.onend = () => {
+      if(sterlingListening && !sterlingSpeaking){
+        try{ sterlingRecognition.start(); }catch(e){}
+      }
+    };
+  }
+
+  function setSterlingListening(state){
+    sterlingListening = state;
+    sterlingOrb.style.filter = state ? 'drop-shadow(0 0 14px rgba(75,232,224,0.5))' : 'none';
+    sterlingStateLabel.textContent = state ? 'listening...' : 'tap the orb to speak';
+  }
+
+  sterlingOrb.addEventListener('click', () => {
+    if(!SpeechRec){
+      sterlingStateLabel.textContent = 'voice not supported in this browser';
+      return;
+    }
+    if(sterlingListening){
+      setSterlingListening(false);
+      sterlingRecognition.stop();
+      return;
+    }
+    setSterlingListening(true);
+    try{ sterlingRecognition.start(); }catch(e){ setSterlingListening(false); }
+  });
+
+  sterlingOrb.addEventListener('mousemove', (e) => {
+    const rect = sterlingOrb.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    sterlingOrb.style.transform = `rotateY(${px * 14}deg) rotateX(${-py * 14}deg)`;
+  });
+  sterlingOrb.addEventListener('mouseleave', () => {
+    sterlingOrb.style.transform = 'rotateY(0deg) rotateX(0deg)';
+  });
+
+  // Sterling v3 — passive wake word ("Hey Sterling") + real audio-reactive orb
+  const wakeWordToggle = document.getElementById('wakeWordToggle');
+  let wakeWordOn = false;
+  let wakeRecognition = null;
+  let awaitingCommand = false;
+  let awaitingCommandTimer = null;
+  let sterlingAudioCtx = null, sterlingAnalyser = null, sterlingAudioStream = null;
+
+  function startVoiceLevelMeter(){
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      sterlingAudioStream = stream;
+      sterlingAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = sterlingAudioCtx.createMediaStreamSource(stream);
+      sterlingAnalyser = sterlingAudioCtx.createAnalyser();
+      sterlingAnalyser.fftSize = 256;
+      source.connect(sterlingAnalyser);
+      const data = new Uint8Array(sterlingAnalyser.frequencyBinCount);
+      function tick(){
+        if(!sterlingAnalyser) return;
+        sterlingAnalyser.getByteFrequencyData(data);
+        const avg = data.reduce((a,b) => a+b, 0) / data.length;
+        sterlingVoiceLevel = Math.min(1, avg / 90);
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }).catch(() => {});
+  }
+
+  function stopVoiceLevelMeter(){
+    if(sterlingAudioStream){ sterlingAudioStream.getTracks().forEach(t => t.stop()); }
+    if(sterlingAudioCtx){ sterlingAudioCtx.close(); }
+    sterlingAudioCtx = null; sterlingAnalyser = null; sterlingAudioStream = null;
+    sterlingVoiceLevel = 0;
+  }
+
+  function armCommandWindow(){
+    awaitingCommand = true;
+    sterlingStateLabel.textContent = 'yes?';
+    speak('Yes?', wakeRecognition, () => wakeWordOn);
+    clearTimeout(awaitingCommandTimer);
+    awaitingCommandTimer = setTimeout(() => {
+      awaitingCommand = false;
+      if(wakeWordOn) sterlingStateLabel.textContent = 'listening for "Hey Sterling"';
+    }, 7000);
+  }
+
+  if(SpeechRec){
+    wakeRecognition = new SpeechRec();
+    wakeRecognition.lang = 'en-GB';
+    wakeRecognition.continuous = true;
+    wakeRecognition.interimResults = false;
+
+    wakeRecognition.onresult = (event) => {
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(!event.results[i].isFinal) continue;
+        const transcript = event.results[i][0].transcript.trim();
+        if(!transcript) continue;
+        const lower = transcript.toLowerCase();
+
+        if(awaitingCommand){
+          clearTimeout(awaitingCommandTimer);
+          awaitingCommand = false;
+          sendSterlingQuery(transcript);
+          continue;
+        }
+        if(lower.includes('sterling')){
+          const idx = lower.lastIndexOf('sterling');
+          const rest = transcript.slice(idx + 8).trim().replace(/^[,.\s]+/, '');
+          if(rest.length > 2){
+            sendSterlingQuery(rest);
+          } else {
+            armCommandWindow();
+          }
+        }
+      }
+    };
+    wakeRecognition.onerror = (e) => {
+      if(e.error === 'no-speech' || e.error === 'aborted') return;
+    };
+    wakeRecognition.onend = () => {
+      if(wakeWordOn && !sterlingSpeaking){
+        try{ wakeRecognition.start(); }catch(e){}
+      }
+    };
+  }
+
+  wakeWordToggle.addEventListener('click', () => {
+    if(!SpeechRec){
+      sterlingStateLabel.textContent = 'voice not supported in this browser';
+      return;
+    }
+    wakeWordOn = !wakeWordOn;
+    wakeWordToggle.textContent = wakeWordOn ? 'WAKE WORD: ON' : 'WAKE WORD: OFF';
+    wakeWordToggle.style.color = wakeWordOn ? 'var(--cyan)' : 'var(--text-dim)';
+    wakeWordToggle.style.borderColor = wakeWordOn ? 'var(--cyan)' : 'var(--line)';
+    if(wakeWordOn){
+      try{ wakeRecognition.start(); }catch(e){}
+      startVoiceLevelMeter();
+      sterlingStateLabel.textContent = 'listening for "Hey Sterling"';
+    } else {
+      try{ wakeRecognition.stop(); }catch(e){}
+      stopVoiceLevelMeter();
+      awaitingCommand = false;
+      sterlingStateLabel.textContent = 'tap the orb to speak';
+    }
+  });
+
+  // Tactical HUD overlay
+  const hudOverlay = document.getElementById('hudOverlay');
+  const closeHudBtn = document.getElementById('closeHudBtn');
+  let hudOpen = false, hudScanX = 0;
+
+  function openHud(){
+    hudOverlay.style.display = 'block';
+    hudOpen = true;
+    coreState.textContent = 'HUD engaged';
+  }
+  function closeHud(){
+    hudOverlay.style.display = 'none';
+    hudOpen = false;
+    coreState.textContent = listening ? 'live mic — always on' : 'standing by';
+  }
+  closeHudBtn.addEventListener('click', closeHud);
+
+  function animateHud(){
+    if(hudOpen){
+      hudScanX = (hudScanX + 0.8) % 360;
+      const ro = document.getElementById('hudRingOuter');
+      const rm = document.getElementById('hudRingMid');
+      const rc = document.getElementById('hudCore');
+      if(ro) ro.setAttribute('transform', `rotate(${hudScanX} 320 190)`);
+      if(rm) rm.setAttribute('transform', `rotate(${-hudScanX * 1.4} 320 190)`);
+      if(rc) rc.setAttribute('transform', `rotate(${hudScanX * 0.5} 320 190)`);
+      const hc = document.getElementById('hudClock');
+      if(hc) hc.textContent = new Date().toLocaleTimeString('en-GB');
+    }
+    requestAnimationFrame(animateHud);
+  }
+  animateHud();
+
+  // activate button - real voice control via Web Speech API
+  const activateBtn = document.getElementById('activateBtn');
+  let listening = false;
+  let recognition = null;
+  let voiceMode = false; // true once user has used voice at least once, controls TTS replies
+
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function pickVoice(){
+    const voices = window.speechSynthesis.getVoices();
+    // prefer a deeper male-sounding English voice for the Jarvis feel
+    return voices.find(v => /male/i.test(v.name) && /en-GB|en-US/.test(v.lang))
+        || voices.find(v => /Daniel|Arthur|Google UK English Male/i.test(v.name))
+        || voices.find(v => /en-GB/.test(v.lang))
+        || voices[0];
+  }
+
+  function stripSymbols(text){
+    return text
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/#+\s?/g, '')
+      .replace(/_{1,2}/g, '')
+      .replace(/`/g, '')
+      .replace(/^[-•]\s?/gm, '')
+      .replace(/\n{2,}/g, '. ')
+      .replace(/\n/g, '. ')
+      .trim();
+  }
+
+  function speak(text, recog, isListeningFn){
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(stripSymbols(text));
+    utter.voice = pickVoice();
+    utter.rate = 1.02;
+    utter.pitch = 0.85;
+    const activeRecog = recog || recognition;
+    const stillListening = isListeningFn ? isListeningFn() : listening;
+    if(stillListening && activeRecog){
+      try{ activeRecog.stop(); }catch(e){}
+      utter.onend = () => {
+        if(isListeningFn ? isListeningFn() : listening){ try{ activeRecog.start(); }catch(e){} }
+      };
+    }
+    window.speechSynthesis.speak(utter);
+  }
+
+  if(SpeechRec){
+    recognition = new SpeechRec();
+    recognition.lang = 'en-GB';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        if(event.results[i].isFinal){
+          const transcript = event.results[i][0].transcript.trim();
+          if(transcript){
+            input.value = transcript;
+            voiceMode = true;
+            sendQuery();
+          }
+        }
+      }
+    };
+    recognition.onerror = (e) => {
+      if(e.error === 'no-speech' || e.error === 'aborted') return; // ignore, keep listening
+      addMsg('HOLOCORE', 'Voice capture failed — check mic permissions for this page.', 'ai');
+      setListening(false);
+    };
+    recognition.onend = () => {
+      // browsers auto-stop recognition after a pause — restart it if the user hasn't turned it off
+      if(listening){
+        try{ recognition.start(); }catch(e){ /* already starting, ignore */ }
+      }
+    };
+  }
+
+  function setListening(state){
+    listening = state;
+    activateBtn.classList.toggle('listening', listening);
+    activateBtn.textContent = listening ? 'LISTENING (LIVE)' : 'ACTIVATE';
+    coreState.textContent = listening ? 'live mic — always on' : 'standing by';
+  }
+
+  activateBtn.addEventListener('click', () => {
+    if(!SpeechRec){
+      addMsg('HOLOCORE', 'This browser does not support voice input — Chrome or Edge on desktop works best. Type below instead.', 'ai');
+      return;
+    }
+    if(listening){
+      setListening(false);
+      recognition.stop();
+      return;
+    }
+    setListening(true);
+    try{
+      recognition.start();
+    }catch(e){
+      setListening(false);
+    }
+  });
+</script>
+
+</body>
+</html>
